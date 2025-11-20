@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Nutanix PSO — Login</title>
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f3f4f6">
+
+  <!-- IBM Plex Sans (same as index.html) -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================
+       THEME + TOKENS (LIGHT GREY)
+    ========================= */
+    :root{
+      --bg: #e5e7eb;
+      --surface: #f3f4f6;
+      --card: #f9fafb;
+      --muted: #6b7280;
+      --muted-2:#4b5563;
+      --accent: #0ea5e9;
+      --accent-2: #06b6d4;
+      --accent-3: #0369a1;
+      --glass: rgba(15,23,42,0.05);
+      --border: rgba(15,23,42,0.14);
+      --text: #111827;
+      --text-soft: #374151;
+      --shadow-md: 0 10px 26px rgba(15,23,42,.10);
+      --shadow-lg: 0 24px 60px rgba(15,23,42,.14);
+      --focus: 0 0 0 3px rgba(14,165,233,.32);
+      --ring: 0 0 0 2px rgba(14,165,233,.6);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-xs: 8px;
+    }
+
+    @media (prefers-reduced-motion:no-preference){
+      :root{ --transition: 180ms cubic-bezier(.2,.7,.2,1); }
+    }
+
+    /* =========================
+       BASE
+    ========================= */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(1100px 580px at 80% -80px, rgba(148,163,184,.35), transparent 55%),
+        radial-gradient(1000px 600px at 0% 120%, rgba(148,163,184,.18), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      font-family: "IBM Plex Sans", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      padding:24px;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      font-size:15px;
+      line-height:1.45;
+    }
+
+    /* =========================
+       CARD
+    ========================= */
+    .card{
+      width:min(460px, 100%);
+      background:linear-gradient(180deg, rgba(249,250,251,.96), rgba(249,250,251,1)), var(--card);
+      border-radius:var(--radius);
+      padding:24px 24px 20px;
+      border:1px solid rgba(15,23,42,0.12);
+      box-shadow:var(--shadow-md);
+    }
+
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      margin-bottom:16px;
+    }
+    .logo{
+      width:46px;height:46px;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#0284c7,#22c55e);
+      font-weight:800;font-size:22px;color:#ffffff;
+      box-shadow:0 12px 28px rgba(15,23,42,.25);
+    }
+    h1{
+      font-size:19px;
+      font-weight:800;
+      margin-bottom:2px;
+      letter-spacing:.2px;
+      color:#0f172a;
+    }
+    .subtitle{color:var(--muted);font-size:13px}
+
+    /* =========================
+       FORM
+    ========================= */
+    form{display:grid;gap:14px;margin-top:14px}
+    label{
+      display:block;font-size:11px;font-weight:800;
+      color:var(--muted);margin-bottom:6px;letter-spacing:.4px;
+      text-transform:uppercase;
+    }
+    input{
+      width:100%;padding:11px 12px;border-radius:var(--radius-xs);
+      border:1px solid var(--border);
+      background:#f3f4f6;color:var(--text);font-size:14px;
+      transition:border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+    input::placeholder{color:#9ca3af}
+    input:focus{
+      border-color:rgba(14,165,233,.75);
+      box-shadow:var(--ring);
+      outline:none;
+      background:#ffffff;
+    }
+    .row{display:flex;justify-content:flex-end;margin-top:4px}
+
+    /* =========================
+       BUTTON
+    ========================= */
+    .btn{
+      background:var(--accent); color:#ffffff; padding:10px 14px;
+      border-radius:10px;border:none;font-weight:800;cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;
+      transition: transform var(--transition), opacity var(--transition), background var(--transition), box-shadow var(--transition);
+      box-shadow: 0 6px 18px rgba(15,23,42,.18);
+      font-size:14px;
+    }
+    .btn:hover{ transform: translateY(-1px); background:var(--accent-2); }
+    .btn:active{ transform: translateY(0) scale(.99) }
+    .btn[disabled]{ opacity:.65; cursor:not-allowed; transform:none; box-shadow:none }
+
+    /* =========================
+       ERROR + PROGRESS
+    ========================= */
+    .err{
+      color:#b91c1c;
+      font-size:13px;
+      background:rgba(248,113,113,.06);
+      border:1px solid rgba(248,113,113,.35);
+      padding:10px;
+      border-radius:10px;
+      display:none;
+      margin-bottom:4px;
+    }
+    .progress{
+      height:10px;border-radius:999px;overflow:hidden;
+      background:rgba(148,163,184,.35);
+      display:none;margin-top:10px;
+    }
+    .bar{
+      height:100%;width:40%;
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      animation:ind 1.1s infinite ease-in-out;
+    }
+    @keyframes ind{
+      0%{transform:translateX(-40%)}50%{transform:translateX(60%)}100%{transform:translateX(100%)}
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <div class="logo">N</div>
+      <div>
+        <h1>Sign in to Nutanix PSO</h1>
+        <div class="subtitle">Use your admin-provisioned account</div>
+      </div>
+    </div>
+
+    <div id="err" class="err" aria-live="polite"></div>
+
+    <form id="loginForm" novalidate>
+      <div>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="name@company.com" autocomplete="email" required>
+      </div>
+
+      <div>
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
+      </div>
+
+      <div class="row">
+        <button id="submitBtn" class="btn" type="submit">Sign in</button>
+      </div>
+
+      <div class="progress" id="prog"><div class="bar"></div></div>
+    </form>
+  </main>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+    
+    // Check if already logged in → redirect to app
+    (function(){ 
+      const token = localStorage.getItem('access_token');
+      if(token) {
+        console.log('Token found, redirecting to app...');
+        location.href='index.html'; 
+      }
+    })();
+
+    const f   = document.getElementById('loginForm');
+    const err = document.getElementById('err');
+    const btn = document.getElementById('submitBtn');
+    const prog= document.getElementById('prog');
+
+    function showErr(m){ err.textContent=m; err.style.display='block'; }
+    function clearErr(){ err.textContent=''; err.style.display='none'; }
+
+    async function postJSON(url, body){
+      const r = await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+      const data = await r.json().catch(()=> ({}));
+      if(!r.ok) throw new Error(data?.detail || data?.message || ('HTTP '+r.status));
+      return data;
+    }
+
+    f.addEventListener('submit', async (e)=>{
+      e.preventDefault(); clearErr();
+      const email = f.email.value.trim().toLowerCase();
+      const password = f.password.value;
+      if(!email || !password){
+        showErr('Email and password required');
+        return;
+      }
+
+      btn.disabled = true; prog.style.display='block';
+      try{
+        const tok = await postJSON(`${API_BASE}/auth/login`, { email, password });
+        
+        // Store with consistent key name: access_token
+        localStorage.setItem('access_token', tok.access_token);
+        
+        // Optional: store user metadata for display
+        if(tok.user_id) localStorage.setItem('pso_user', tok.user_id);
+        if(tok.email)   localStorage.setItem('pso_email', tok.email);
+        
+        console.log('Login successful, redirecting...');
+        location.href = 'index.html';
+      }catch(e){ 
+        console.error('Login error:', e);
+        showErr(e.message || 'Login failed'); 
+      } finally{
+        btn.disabled = false;
+        prog.style.display='none';
+      }
+    });
+  </script>
+</body>
+</html>
