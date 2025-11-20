@@ -83,3 +83,4 @@ azure-pipelines.yml
 *.swp
 
 test.pyc
+cleanenv
