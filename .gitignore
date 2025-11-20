@@ -81,3 +81,5 @@ azure-pipelines.yml
 # -----------------------------
 *.bak
 *.swp
+
+test.pyc
