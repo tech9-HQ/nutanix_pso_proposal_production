@@ -120,12 +120,22 @@
     backdrop-filter: blur(4px);
   }
   .brand{display:flex;gap:14px;align-items:center}
-  .logo{
-    width:48px;height:48px;border-radius:12px;
-    display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,#0284c7,#22c55e);
-    font-weight:800;font-size:22px;color:#ffffff;
-    box-shadow:0 12px 28px rgba(15,23,42,.25);
+  .logo {
+    width: 120px;                 /* increase width */
+    height: auto;                 /* auto height */
+    border-radius: 8px;           /* optional */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none !important;  /* remove gradient background */
+    box-shadow: none !important;  /* remove shadow */
+  }
+
+  .logo img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;          /* prevents distortion */
+    display: block;
   }
   h1{font-size:19px;font-weight:800;margin-bottom:2px;letter-spacing:.2px;color:#0f172a}
   .subtitle{color:var(--muted);font-size:13px}
@@ -304,7 +314,9 @@
     <!-- Header with Profile -->
     <header>
       <div class="brand">
-        <div class="logo" aria-hidden="true">N</div>
+        <div class="logo" aria-hidden="true">
+          <img src="assets/tech9labs_logo.png" alt="Tech9Labs Logo">
+        </div>
         <div>
           <h1>Nutanix Services — Proposal Builder</h1>
           <div class="subtitle">AI-powered proposal generation</div>
@@ -467,7 +479,7 @@
       });
 
       // Minimal profile header glue (fetch /auth/me if token exists)
-      const API_BASE = "http://127.0.0.1:8000";
+      const API_BASE = "";
       const userInfo = document.getElementById("userInfo");
       const userName = document.getElementById("userName");
       const userEmail = document.getElementById("userEmail");
@@ -483,7 +495,9 @@
           return;
         }
         try{
-          const res = await fetch(`${API_BASE}/auth/me`, { headers:{ Authorization:`Bearer ${token}` } });
+          const res = await fetch(`${API_BASE}/auth/me`, {
+            headers:{ Authorization:`Bearer ${token}` }
+          });
           if(!res.ok) throw new Error('invalid');
           const p = await res.json();
           userInfo.style.display = 'block';

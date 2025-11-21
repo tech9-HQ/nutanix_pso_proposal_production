@@ -80,12 +80,22 @@
       align-items:center;
       margin-bottom:16px;
     }
-    .logo{
-      width:46px;height:46px;border-radius:12px;
-      display:flex;align-items:center;justify-content:center;
-      background:linear-gradient(135deg,#0284c7,#22c55e);
-      font-weight:800;font-size:22px;color:#ffffff;
-      box-shadow:0 12px 28px rgba(15,23,42,.25);
+    .logo {
+      width: 120px;                 /* increase width */
+      height: auto;                 /* auto height */
+      border-radius: 8px;           /* optional */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none !important;  /* remove gradient background */
+      box-shadow: none !important;  /* remove shadow */
+    }
+
+    .logo img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;          /* prevents distortion */
+      display: block;
     }
     h1{
       font-size:19px;
@@ -166,7 +176,9 @@
 <body>
   <main class="card">
     <div class="brand">
-      <div class="logo">N</div>
+      <div class="logo">
+        <img src="assets/tech9labs_logo.png" alt="Tech9Labs Logo">
+      </div>
       <div>
         <h1>Sign in to Nutanix PSO</h1>
         <div class="subtitle">Use your admin-provisioned account</div>
@@ -195,66 +207,66 @@
   </main>
 
   <script>
-    const API_BASE = 'http://127.0.0.1:8000';
-    
-    // Check if already logged in → redirect to app
-    (function(){ 
-      const token = localStorage.getItem('access_token');
-      if(token) {
-        console.log('Token found, redirecting to app...');
-        location.href='index.html'; 
-      }
-    })();
+  // same-origin; no hard-coded host
+  const API_BASE = '';
 
-    const f   = document.getElementById('loginForm');
-    const err = document.getElementById('err');
-    const btn = document.getElementById('submitBtn');
-    const prog= document.getElementById('prog');
+  // Check if already logged in → redirect to app
+  (function(){ 
+    const token = localStorage.getItem('access_token');
+    if(token) {
+      console.log('Token found, redirecting to app...');
+      location.href='index.html'; 
+    }
+  })();
 
-    function showErr(m){ err.textContent=m; err.style.display='block'; }
-    function clearErr(){ err.textContent=''; err.style.display='none'; }
+  const f   = document.getElementById('loginForm');
+  const err = document.getElementById('err');
+  const btn = document.getElementById('submitBtn');
+  const prog= document.getElementById('prog');
 
-    async function postJSON(url, body){
-      const r = await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(body)
-      });
-      const data = await r.json().catch(()=> ({}));
-      if(!r.ok) throw new Error(data?.detail || data?.message || ('HTTP '+r.status));
-      return data;
+  function showErr(m){ err.textContent=m; err.style.display='block'; }
+  function clearErr(){ err.textContent=''; err.style.display='none'; }
+
+  async function postJSON(path, body){
+    const r = await fetch(path, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    const data = await r.json().catch(()=> ({}));
+    if(!r.ok) throw new Error(data?.detail || data?.message || ('HTTP '+r.status));
+    return data;
+  }
+
+  f.addEventListener('submit', async (e)=>{
+    e.preventDefault(); clearErr();
+    const email = f.email.value.trim().toLowerCase();
+    const password = f.password.value;
+    if(!email || !password){
+      showErr('Email and password required');
+      return;
     }
 
-    f.addEventListener('submit', async (e)=>{
-      e.preventDefault(); clearErr();
-      const email = f.email.value.trim().toLowerCase();
-      const password = f.password.value;
-      if(!email || !password){
-        showErr('Email and password required');
-        return;
-      }
+    btn.disabled = true; prog.style.display='block';
+    try{
+      // relative path → https://nutanix-pso-app.azurewebsites.net/auth/login
+      const tok = await postJSON('/auth/login', { email, password });
 
-      btn.disabled = true; prog.style.display='block';
-      try{
-        const tok = await postJSON(`${API_BASE}/auth/login`, { email, password });
-        
-        // Store with consistent key name: access_token
-        localStorage.setItem('access_token', tok.access_token);
-        
-        // Optional: store user metadata for display
-        if(tok.user_id) localStorage.setItem('pso_user', tok.user_id);
-        if(tok.email)   localStorage.setItem('pso_email', tok.email);
-        
-        console.log('Login successful, redirecting...');
-        location.href = 'index.html';
-      }catch(e){ 
-        console.error('Login error:', e);
-        showErr(e.message || 'Login failed'); 
-      } finally{
-        btn.disabled = false;
-        prog.style.display='none';
-      }
-    });
-  </script>
+      localStorage.setItem('access_token', tok.access_token);
+      if(tok.user_id) localStorage.setItem('pso_user', tok.user_id);
+      if(tok.email)   localStorage.setItem('pso_email', tok.email);
+
+      console.log('Login successful, redirecting...');
+      location.href = 'index.html';
+    }catch(e){ 
+      console.error('Login error:', e);
+      showErr(e.message || 'Login failed'); 
+    } finally{
+      btn.disabled = false;
+      prog.style.display='none';
+    }
+  });
+</script>
+
 </body>
 </html>

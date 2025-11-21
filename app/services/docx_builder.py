@@ -853,6 +853,10 @@ def _number_to_indian_words(amount: Decimal) -> str:
     return f"{words} Rupees Only"
 
 
+# In your existing app/services/docx_builder.py file
+# Find the add_commercial_boq_section() function (around line 600)
+# Replace it with this enhanced version:
+
 def add_commercial_boq_section(
     doc: Document,
     title: str,
@@ -862,16 +866,8 @@ def add_commercial_boq_section(
     heading_level: int = 1,
 ) -> None:
     """
-    Render Commercial Bill of Quantities as a precise cost table.
-
-    Columns:
-        Services | Man Days | USD Cost | INR Cost | Total INR Cost
-
-    After the table:
-        Subtotal (INR)
-        GST @18%
-        Final Amount (INR)
-        Final Amount in words
+    Render Commercial BOQ with PROFESSIONAL STYLING
+    Now uses styled tables with alternating rows
     """
     doc.add_heading(title, level=heading_level)
 
@@ -882,21 +878,11 @@ def add_commercial_boq_section(
     items: List[Tuple[str, int]] = []
     
     default_estimates = {
-        "assessment": 5,
-        "planning": 5,
-        "design": 10,
-        "migration": 15,
-        "implementation": 15,
-        "deployment": 10,
-        "configuration": 8,
-        "testing": 5,
-        "validation": 5,
-        "training": 3,
-        "documentation": 3,
-        "support": 10,
-        "optimization": 5,
-        "monitoring": 5,
-        "license": 0,
+        "assessment": 5, "planning": 5, "design": 10,
+        "migration": 15, "implementation": 15, "deployment": 10,
+        "configuration": 8, "testing": 5, "validation": 5,
+        "training": 3, "documentation": 3, "support": 10,
+        "optimization": 5, "monitoring": 5, "license": 0,
         "professional services": 5,
     }
     
@@ -911,77 +897,95 @@ def add_commercial_boq_section(
             for keyword, default_days in default_estimates.items():
                 if keyword in desc_lower:
                     man_days = default_days
-                    log.info(
-                        f"Assigned default {default_days} man-days to "
-                        f"'{description}' based on keyword '{keyword}'"
-                    )
+                    log.info(f"Default: {description} → {default_days} days")
                     break
         
         items.append((description, man_days))
 
-    # Table: Services | Man Days | USD Cost | INR Cost | Total INR Cost
-    table = doc.add_table(rows=1, cols=5)
-    table.style = "Light Grid Accent 1"
-    
-    headers = [
-        "Services",
-        "Man Days",
-        "USD Cost",
-        "INR Cost",
-        "Total INR Cost",
-    ]
-
-    header_cells = table.rows[0].cells
-    for i, header_text in enumerate(headers):
-        para = header_cells[i].paragraphs[0]
-        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = para.add_run(header_text)
-        run.bold = True
-        run.font.size = Pt(11)
-
-    subtotal_inr = Decimal("0.00")
-    items_with_cost = 0
-
-    for description, man_days in items:
-        row_cells = table.add_row().cells
+    # PROFESSIONAL TABLE with styling
+    try:
+        from app.services.professional_styling import create_professional_table
         
-        row_cells[0].text = description
-        row_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+        headers = ["Services", "Man Days", "USD Cost", "INR Cost", "Total INR Cost"]
+        table_data = []
+        
+        subtotal_inr = Decimal("0.00")
+        items_with_cost = 0
+        
+        for description, man_days in items:
+            if man_days > 0:
+                rate_usd = Decimal(rate_usd_per_day)
+                if "workshop" in description.lower():
+                    rate_usd = WORKSHOP_RATE_USD
+                
+                rate_inr = (rate_usd * exchange_rate.rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
+                total_inr = (rate_inr * man_days).quantize(Decimal("0.01"), ROUND_HALF_UP)
+                
+                table_data.append([
+                    description,
+                    str(man_days),
+                    format_currency_usd(rate_usd),
+                    format_currency_inr(rate_inr),
+                    format_currency_inr(total_inr)
+                ])
+                
+                subtotal_inr += total_inr
+                items_with_cost += 1
+            else:
+                table_data.append([
+                    description,
+                    "N/A", "N/A", "N/A", "N/A"
+                ])
+        
+        # Create professional table
+        create_professional_table(doc, headers, table_data, highlight_totals=False)
+        
+    except ImportError:
+        # Fallback to basic table if styling not available
+        log.warning("Professional styling not available, using basic table")
+        table = doc.add_table(rows=1, cols=5)
+        table.style = "Light Grid Accent 1"
+        
+        headers = ["Services", "Man Days", "USD Cost", "INR Cost", "Total INR Cost"]
+        header_cells = table.rows[0].cells
+        for i, header_text in enumerate(headers):
+            para = header_cells[i].paragraphs[0]
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = para.add_run(header_text)
+            run.bold = True
 
-        if man_days > 0:
-            rate_usd = Decimal(rate_usd_per_day)
-            desc_lower = description.lower()
-            if "workshop" in desc_lower:
-                rate_usd = WORKSHOP_RATE_USD
+        subtotal_inr = Decimal("0.00")
+        
+        for description, man_days in items:
+            row_cells = table.add_row().cells
+            row_cells[0].text = description
+            row_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-            rate_inr = (rate_usd * exchange_rate.rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            total_inr = (rate_inr * man_days).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            if man_days > 0:
+                rate_usd = Decimal(rate_usd_per_day)
+                if "workshop" in description.lower():
+                    rate_usd = WORKSHOP_RATE_USD
 
-            row_cells[1].text = str(man_days)
-            row_cells[2].text = format_currency_usd(rate_usd)
-            row_cells[3].text = format_currency_inr(rate_inr)
-            row_cells[4].text = format_currency_inr(total_inr)
+                rate_inr = (rate_usd * exchange_rate.rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
+                total_inr = (rate_inr * man_days).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
-            for i in range(1, 5):
-                row_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                row_cells[1].text = str(man_days)
+                row_cells[2].text = format_currency_usd(rate_usd)
+                row_cells[3].text = format_currency_inr(rate_inr)
+                row_cells[4].text = format_currency_inr(total_inr)
 
-            subtotal_inr += total_inr
-            items_with_cost += 1
-        else:
-            row_cells[1].text = "N/A"
-            row_cells[2].text = "N/A"
-            row_cells[3].text = "N/A"
-            row_cells[4].text = "N/A"
-            
-            for i in range(1, 5):
-                p = row_cells[i].paragraphs[0]
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for run in p.runs:
-                    run.italic = True
+                for i in range(1, 5):
+                    row_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
-    compact_table(table)
+                subtotal_inr += total_inr
+            else:
+                for i in range(1, 5):
+                    row_cells[i].text = "N/A"
+                    row_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # Subtotal, GST, Final amount
+        compact_table(table)
+
+    # Summary calculations
     gst = (subtotal_inr * Decimal("0.18")).quantize(Decimal("0.01"), ROUND_HALF_UP)
     final_amount = (subtotal_inr + gst).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
@@ -1020,8 +1024,8 @@ def add_commercial_boq_section(
 
     doc.add_page_break()
     log.info(
-        f"BOQ section completed: {items_with_cost}/{len(items)} items costed; "
-        f"subtotal={subtotal_inr}, gst={gst}, final={final_amount}"
+        f"BOQ completed: {items_with_cost}/{len(items)} items; "
+        f"subtotal={subtotal_inr}, final={final_amount}"
     )
 
 

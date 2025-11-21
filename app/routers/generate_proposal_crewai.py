@@ -29,73 +29,17 @@ class ProposalRequest(BaseModel):
 
 @router.post("/generate_proposal")
 async def generate_proposal(payload: ProposalRequest):
-    """
-    Unified endpoint for both short and detailed proposals.
-    - Short proposals: 5-10 pages with cost summary
-    - Detailed proposals: 25-40 pages with enhanced TOC
-    """
-    log.info(f"=" * 80)
-    log.info(f"Generating {payload.proposal_type.upper()} proposal for {payload.customer_name}")
-    log.info(f"=" * 80)
+    try:
+        log.info("=" * 80)
+        log.info(f"Generating {payload.proposal_type.upper()} proposal for {payload.customer_name}")
+        log.info("=" * 80)
 
-    # ========================================================================
-    # STEP 1: Generate proposal content using AI
-    # ========================================================================
-    log.info("Step 1: Calling AI to generate proposal content...")
-    
-    result = generate_proposal_with_qa(
-        customer_name=payload.customer_name,
-        industry=payload.industry,
-        deployment_type=payload.deployment_type,
-        proposal_type=payload.proposal_type,
-        hardware_choice=payload.hardware_choice,
-        client_requirements=payload.client_requirements,
-        client_boq=payload.client_boq,
-    )
+        # ========================================================================
+        # STEP 1: Generate proposal content using AI
+        # ========================================================================
+        log.info("Step 1: Calling AI to generate proposal content...")
 
-    # ========================================================================
-    # STEP 2: Extract sections for DOCX builder
-    # ========================================================================
-    log.info("Step 2: Extracting sections from AI output...")
-    
-    sections = extract_sections_for_docx(result)
-    
-    log.info(f"✓ AI generated {len(sections)} sections")
-    log.debug(f"  Section keys: {list(sections.keys())}")
-
-    # ========================================================================
-    # STEP 3: Build appropriate DOCX based on type
-    # ========================================================================
-    if payload.proposal_type == "detailed":
-        log.info("Step 3: Building DETAILED proposal with enhanced TOC...")
-        
-        # Use the enhanced TOC builder for detailed proposals
-        doc_bytes = build_detailed_proposal_with_enhanced_toc(sections)
-        
-        filename = f"{payload.customer_name}_nutanix_pso_detailed.docx".replace(" ", "_")
-        log.info(f"✓ Detailed proposal built: {filename}")
-        
-    else:  # short proposal
-        log.info("Step 3: Building SHORT proposal...")
-        
-        # Extract narrative sections from AI output
-        narrative_sections = {
-            "executive_summary": sections.get("executive_summary", ""),
-            "scope_summary": sections.get("scope_summary", sections.get("scope_of_work_in_scope", "")),
-            "key_benefits": sections.get("key_benefits", []),
-            "risk_note": sections.get("risks_and_mitigation", ""),
-            "closing": sections.get("closing", "Thank you for considering our proposal."),
-        }
-        
-        # Parse services from BOQ content if available
-        services = _parse_services_from_boq(
-            sections.get("commercial_boq_expanded", payload.client_boq)
-        )
-        
-        log.info(f"  Parsed {len(services)} services from BOQ")
-        
-        # Build short proposal DOCX
-        file_path = build_short_proposal_docx(
+        result = generate_proposal_with_qa(
             customer_name=payload.customer_name,
             industry=payload.industry,
             deployment_type=payload.deployment_type,
@@ -103,28 +47,77 @@ async def generate_proposal(payload: ProposalRequest):
             hardware_choice=payload.hardware_choice,
             client_requirements=payload.client_requirements,
             client_boq=payload.client_boq,
-            services=services,
-            narrative_sections=narrative_sections,
         )
-        
-        # Read the file into bytes
-        with open(file_path, "rb") as f:
-            doc_bytes = f.read()
-        
-        filename = f"{payload.customer_name}_nutanix_pso_short.docx".replace(" ", "_")
-        log.info(f"✓ Short proposal built: {filename}")
 
-    # ========================================================================
-    # STEP 4: Return DOCX as streaming response
-    # ========================================================================
-    log.info(f"Step 4: Returning document ({len(doc_bytes)} bytes)")
-    log.info(f"=" * 80)
-    
-    return StreamingResponse(
-        iter([doc_bytes]),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+        # ========================================================================
+        # STEP 2: Extract sections for DOCX builder
+        # ========================================================================
+        log.info("Step 2: Extracting sections from AI output...")
+
+        sections = extract_sections_for_docx(result)
+
+        log.info(f"✓ AI generated {len(sections)} sections")
+        log.debug(f"  Section keys: {list(sections.keys())}")
+
+        # ========================================================================
+        # STEP 3: Build DOCX
+        # ========================================================================
+        if payload.proposal_type == "detailed":
+            log.info("Step 3: Building DETAILED proposal with enhanced TOC...")
+
+            doc_bytes = build_detailed_proposal_with_enhanced_toc(sections)
+            filename = f"{payload.customer_name}_nutanix_pso_detailed.docx".replace(" ", "_")
+
+        else:
+            log.info("Step 3: Building SHORT proposal...")
+
+            narrative_sections = {
+                "executive_summary": sections.get("executive_summary", ""),
+                "scope_summary": sections.get("scope_summary", sections.get("scope_of_work_in_scope", "")),
+                "key_benefits": sections.get("key_benefits", []),
+                "risk_note": sections.get("risks_and_mitigation", ""),
+                "closing": sections.get("closing", "Thank you for considering our proposal."),
+            }
+
+            services = _parse_services_from_boq(
+                sections.get("commercial_boq_expanded", payload.client_boq)
+            )
+
+            file_path = build_short_proposal_docx(
+                customer_name=payload.customer_name,
+                industry=payload.industry,
+                deployment_type=payload.deployment_type,
+                proposal_type=payload.proposal_type,
+                hardware_choice=payload.hardware_choice,
+                client_requirements=payload.client_requirements,
+                client_boq=payload.client_boq,
+                services=services,
+                narrative_sections=narrative_sections,
+            )
+
+            with open(file_path, "rb") as f:
+                doc_bytes = f.read()
+
+            filename = f"{payload.customer_name}_nutanix_pso_short.docx".replace(" ", "_")
+
+        # ========================================================================
+        # STEP 4: Return DOCX
+        # ========================================================================
+        log.info(f"Step 4: Returning document ({len(doc_bytes)} bytes)")
+
+        return StreamingResponse(
+            iter([doc_bytes]),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'},
+        )
+
+    except Exception as e:
+        import traceback
+        log.error("Unhandled ERROR during proposal generation:")
+        log.error(traceback.format_exc())
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"generate_proposal crashed: {e}")
+
 
 
 def _parse_services_from_boq(boq_content: str) -> list:
